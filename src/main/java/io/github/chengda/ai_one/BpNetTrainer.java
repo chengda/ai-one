@@ -97,28 +97,70 @@ public class BpNetTrainer {
         this.model = model;
     }
 
-    public String train(int times) {
+    public String train(int maxTimes, double acceptableError) {
         initModel();
         BpNet bpNet = BpNet.build(getModel());
-        for (int i = 0; i < times; i++) {
-            getExamples().forEach(example -> {
+        String result = SUCCEEDED;
+        for (int i = 0; i < maxTimes; i++) {
+            result = SUCCEEDED;
+            for (int j = 0, n = getExamples().size(); j < n; j++) {
+                double[] example = getExamples().get(j);
                 int[] neuronNums = builder.getNeuronNums();
                 double[] inputs = Arrays.copyOfRange(example, 0, neuronNums[0]);
-                double[] outputs = bpNet.execute(inputs);
-                double error = calculateError(outputs, Arrays.copyOfRange(example, neuronNums[0], example.length));
-                feedback(error);
-            });
+                List<double[]> outputs = bpNet.execute(inputs);
+                double[] expectedOutputs = Arrays.copyOfRange(example, neuronNums[0], example.length);
+                double error = calculateError(outputs.get(outputs.size() - 1), expectedOutputs);
+                if (error >= acceptableError) {
+                    result = FAILED;
+                    feedback(outputs, expectedOutputs);
+                }
+            }
+            if (result.equals(SUCCEEDED)) {
+                break;
+            }
         }
-        return SUCCEEDED;
+        return result;
     }
 
-    private void feedback(double error) {
+    private void feedback(List<double[]> outputs, double[] expectedOutputs) {
+        List<double[][]> weights = getModel().getWeights();
+        double[] outputLayerOutputs = outputs.get(outputs.size() - 1);
+        double[] errors = new double[outputLayerOutputs.length];
+        //计算输出层误差
+        for (int i = 0; i < errors.length; i++) {
+            errors[i] = outputLayerOutputs[i] - expectedOutputs[i];
+        }
+        for (int i = 0, n = outputs.size(); i < n - 1; i++) {
+            int layer = n - i - 1;
+            double[] layerOutputs = outputs.get(layer);
+            double[] preLayerOutputs = outputs.get(layer - 1);
+            //计算本层残差
+            double[] losses = new double[layerOutputs.length];
+            for (int j = 0; j < losses.length; j++) {
+                losses[j] = -(errors[j] * layerOutputs[j] * (1 - layerOutputs[j]));
+            }
+            double[][] layerWeights = weights.get(layer);
+            //计算前一层误差
+            errors = new double[layerWeights.length];
+            for (int j = 0; j < layerWeights.length; j++) {
+                errors[j] = 0d;
+                for (int k = 0; k < losses.length; k++) {
+                    errors[j] += layerWeights[j][k] * losses[k];
+                }
+            }
+            //调整前一层到本层的权重
+            for (int j = 0; j < layerWeights.length; j++) {
+                for (int k = 0; k < losses.length; k++) {
+                    layerWeights[j][k] += preLayerOutputs[j] * losses[k] * builder.getLearningRate();
+                }
+            }
+        }
     }
 
     private double calculateError(double[] outputs, double[] expectedOutputs) {
         double error = 0.0d;
         for (int i = 0, n = outputs.length; i < n; i++) {
-            error += Math.exp(outputs[i] - expectedOutputs[i]);
+            error += Math.pow(outputs[i] - expectedOutputs[i], 2);
         }
         return error / 2.0d;
     }

@@ -1,5 +1,6 @@
 package io.github.chengda.ai_one;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BpNet {
@@ -13,25 +14,28 @@ public class BpNet {
         return new BpNet(model);
     }
 
-    public double[] execute(double[] inputs) {
+    public List<double[]> execute(double[] inputs) {
         List<double[][]> weights = model.getWeights();
         List<double[]> biases = model.getBiases();
-        double[] outputs = inputs;
+        List<double[]> outputs = new ArrayList<>();
+        double[] layerOutputs = inputs;
+        outputs.add(layerOutputs);
         for (int k = 0, p = weights.size(); k < p; k++) {
             double[][] layerWeights = weights.get(k);
             double[] layerBiases = biases.get(k);
-            inputs = outputs;
-            outputs = new double[layerWeights[0].length];
-            for (int i = 0, m = outputs.length; i < m; i++) {
+            inputs = layerOutputs;
+            layerOutputs = new double[layerWeights[0].length];
+            for (int i = 0, m = layerOutputs.length; i < m; i++) {
                 for (int j = 0, n = inputs.length; j < n; j++) {
                     if (j == 0) {
-                        outputs[i] = 0.0d;
+                        layerOutputs[i] = 0.0d;
                     }
-                    outputs[i] += inputs[j] * layerWeights[j][i];
+                    layerOutputs[i] += inputs[j] * layerWeights[j][i];
                 }
                 //执行激活函数
-                outputs[i] = active(outputs[i]) + layerBiases[i];
+                layerOutputs[i] = active(layerOutputs[i]) + layerBiases[i];
             }
+            outputs.add(layerOutputs);
         }
         return outputs;
     }
