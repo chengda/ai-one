@@ -16,13 +16,14 @@ public class BpNet {
 
     public List<double[]> execute(double[] inputs) {
         List<double[][]> weights = model.getWeights();
-        List<double[]> biases = model.getBiases();
+        double bias = model.getBias();
+        List<double[]> biasWeights = model.getBiasWeights();
         List<double[]> outputs = new ArrayList<>();
         double[] layerOutputs = inputs;
         outputs.add(layerOutputs);
         for (int k = 0, p = weights.size(); k < p; k++) {
             double[][] layerWeights = weights.get(k);
-            double[] layerBiases = biases.get(k);
+            double[] layerBiasWeights = biasWeights.get(k);
             inputs = layerOutputs;
             layerOutputs = new double[layerWeights[0].length];
             for (int i = 0, m = layerOutputs.length; i < m; i++) {
@@ -31,9 +32,12 @@ public class BpNet {
                         layerOutputs[i] = 0.0d;
                     }
                     layerOutputs[i] += inputs[j] * layerWeights[j][i];
+
                 }
+                //加偏置
+                layerOutputs[i] += bias * layerBiasWeights[i];
                 //执行激活函数
-                layerOutputs[i] = active(layerOutputs[i]) + layerBiases[i];
+                layerOutputs[i] = active(layerOutputs[i]);
             }
             outputs.add(layerOutputs);
         }
@@ -41,6 +45,6 @@ public class BpNet {
     }
 
     private double active(double output) {
-        return 1d / (1d + Math.pow(Math.E, -output));
+        return 1d / (1d + Math.exp(-output));
     }
 }
