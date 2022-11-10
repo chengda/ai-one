@@ -1,9 +1,7 @@
 package io.github.chengda.ai_one;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class BpNetTrainer {
     public static String SUCCEEDED = "SUCCEEDED";
@@ -20,6 +18,8 @@ public class BpNetTrainer {
         private int[] neuronNums;
         private double bias;
         private double learningRate;
+        private double inputNormalizationFactor;
+        private double outputNormalizationFactor;
 
         public int[] getNeuronNums() {
             return neuronNums;
@@ -31,6 +31,14 @@ public class BpNetTrainer {
 
         public double getLearningRate() {
             return learningRate;
+        }
+
+        public double getInputNormalizationFactor() {
+            return inputNormalizationFactor;
+        }
+
+        public double getOutputNormalizationFactor() {
+            return outputNormalizationFactor;
         }
 
         public Builder initLayers(int... neuronNums) {
@@ -48,9 +56,17 @@ public class BpNetTrainer {
             return this;
         }
 
+        public Builder initNormalizationFactor(double inputNormalizationFactor, double outputNormalizationFactor) {
+            this.inputNormalizationFactor = inputNormalizationFactor;
+            this.outputNormalizationFactor = outputNormalizationFactor;
+            return this;
+        }
+
         public BpNetTrainer build() {
             return new BpNetTrainer(Builder.this);
         }
+
+
     }
 
     public static Builder builder() {
@@ -97,12 +113,14 @@ public class BpNetTrainer {
                 double[] example = getExamples().get(j);
                 int[] neuronNums = builder.getNeuronNums();
                 double[] inputs = Arrays.copyOfRange(example, 0, neuronNums[0]);
-                List<double[]> outputs = bpNet.execute(inputs);
+                double[] finalOutputs = bpNet.execute(inputs);
+                List<double[]> outputs = bpNet.getOutputs();
                 double[] expectedOutputs = Arrays.copyOfRange(example, neuronNums[0], example.length);
-                double error = calculateError(outputs.get(outputs.size() - 1), expectedOutputs);
+                double error = calculateError(finalOutputs, expectedOutputs);
+                showError(error);
                 if (error >= acceptableError) {
                     result = FAILED;
-                    feedback(outputs, expectedOutputs);
+                    feedback(outputs, BpNetUtils.normalize(expectedOutputs, builder.getInputNormalizationFactor()));
                 }
             }
             if (result.equals(SUCCEEDED)) {
@@ -111,6 +129,32 @@ public class BpNetTrainer {
             }
         }
         return result;
+    }
+
+    private List<Double> errorList = new LinkedList<>();
+
+    private void showError(double error) {
+        if (errorList.size() < 10) {
+            errorList.add(error);
+        } else {
+            errorList.remove(0);
+            errorList.add(error);
+        }
+        double avgError = 0;
+        for (double v : errorList) {
+            avgError += v;
+        }
+        avgError = avgError / errorList.size();
+        System.out.print("\r");
+        int rate = (int) avgError * 10;
+        for (int i = 0; i < 100; i++) {
+            if (i <= rate) {
+                System.out.print("#");
+            } else {
+                System.out.print(" ");
+            }
+        }
+        System.out.println(" |" + avgError);
     }
 
     private void feedback(List<double[]> outputs, double[] expectedOutputs) {
@@ -197,5 +241,8 @@ public class BpNetTrainer {
             biasWeights.add(layerBiasWeights);
         }
         getModel().setBiasWeights(biasWeights);
+        //初始化归一化因子
+        getModel().setInputNormalizationFactor(builder.getInputNormalizationFactor());
+        getModel().setOutputNormalizationFactor(builder.getOutputNormalizationFactor());
     }
 }
