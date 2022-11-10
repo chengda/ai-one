@@ -12,27 +12,27 @@ public class UnitTest2 {
     @Test
     public void test1() throws Exception {
         BpNetTrainer trainer = BpNetTrainer.builder()
-                .initBias(1)
+                .initBias(-1)
                 .initLearningRate(0.6)
-                .initLayers(900, 3, 3, 1)
+                .initLayers(900, 3, 1)
                 .initNormalizationFactor(26777216d, 10d)
                 .build();
         String result = trainer
                 .addExample(createExample("num_train/1.png", 1))
                 .addExample(createExample("num_train/2.png", 2))
-//                .addExample(createExample("num_train/2.png", 3))
-//                .addExample(createExample("num_train/3.png", 4))
-//                .addExample(createExample("num_train/4.png", 5))
+                .addExample(createExample("num_train/3.png", 3))
+                .addExample(createExample("num_train/3.1.png", 3))
+                .addExample(createExample("num_train/4.png", 4))
+                .addExample(createExample("num_train/5.png", 5))
                 .train(1000000, 0.00001);
         System.out.println(result);
         if (result == BpNetTrainer.SUCCEEDED) {
             BpNet bpNet = BpNet.build(trainer.getModel());
-            double[] outputs = bpNet.execute(loadPic("num_train/1.png"));
+            double[] outputs = bpNet.execute(loadPic("num_test/3.png"));
             System.out.println(outputs[0]);
-            outputs = bpNet.execute(new double[]{1, 5});
+            outputs = bpNet.execute(loadPic("num_test/2.png"));
             System.out.println(outputs[0]);
         }
-
     }
 
     private double[] loadPic(String picSrc) throws Exception {

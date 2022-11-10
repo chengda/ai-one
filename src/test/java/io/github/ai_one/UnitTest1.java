@@ -11,15 +11,15 @@ public class UnitTest1 {
     @Test
     public void test1() throws Exception {
         BpNetTrainer trainer = BpNetTrainer.builder()
-                .initBias(5)
-                .initLearningRate(0.8)
+                .initBias(-1)
+                .initLearningRate(0.7)
                 .initLayers(2, 3, 1)
-                .initNormalizationFactor(10, 10)
+                .initNormalizationFactor(4, 10)
                 .build();
         String result = trainer
                 .addExample(1, 1, 2)
                 .addExample(1, 2, 3)
-                .train(5000000, 0.000001);
+                .train(5000000, 0.00001);
         System.out.println(result);
         if (result == BpNetTrainer.SUCCEEDED) {
             BpNet bpNet = BpNet.build(trainer.getModel());

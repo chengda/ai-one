@@ -120,7 +120,7 @@ public class BpNetTrainer {
                 showError(error);
                 if (error >= acceptableError) {
                     result = FAILED;
-                    feedback(outputs, BpNetUtils.normalize(expectedOutputs, builder.getInputNormalizationFactor()));
+                    feedback(outputs, BpNetUtils.normalize(expectedOutputs, builder.getOutputNormalizationFactor()));
                 }
             }
             if (result.equals(SUCCEEDED)) {
@@ -177,6 +177,13 @@ public class BpNetTrainer {
                 losses[j] = errors[j] * layerOutputs[j] * (1 - layerOutputs[j]);
             }
             double[][] layerWeights = weights.get(layer - 1);
+            //调整前一层到本层的权重
+            for (int j = 0; j < layerWeights.length; j++) {
+                for (int k = 0; k < losses.length; k++) {
+                    layerWeights[j][k] += preLayerOutputs[j] * losses[k] * builder.getLearningRate();
+                }
+            }
+            weights.set(layer - 1, layerWeights);
             //计算前一层误差
             errors = new double[layerWeights.length];
             for (int j = 0; j < layerWeights.length; j++) {
@@ -185,13 +192,6 @@ public class BpNetTrainer {
                     errors[j] += layerWeights[j][k] * losses[k];
                 }
             }
-            //调整前一层到本层的权重
-            for (int j = 0; j < layerWeights.length; j++) {
-                for (int k = 0; k < losses.length; k++) {
-                    layerWeights[j][k] += preLayerOutputs[j] * losses[k] * builder.getLearningRate();
-                }
-            }
-            weights.set(layer - 1, layerWeights);
             //调整前一层到本层的偏置权重
             double[] layerBiasWeights = biasWeights.get(layer - 1);
             for (int j = 0; j < layerBiasWeights.length; j++) {
@@ -223,7 +223,7 @@ public class BpNetTrainer {
             double[][] layerWeights = new double[neuronNums[i]][neuronNums[i + 1]];
             for (int j = 0, jn = layerWeights.length; j < jn; j++) {
                 for (int k = 0, kn = layerWeights[j].length; k < kn; k++) {
-                    layerWeights[j][k] = Math.random();
+                    layerWeights[j][k] = 0;//Math.random() / jn;
                 }
             }
             weights.add(layerWeights);
@@ -236,7 +236,7 @@ public class BpNetTrainer {
         for (int i = 0, n = neuronNums.length - 1; i < n; i++) {
             double[] layerBiasWeights = new double[neuronNums[i + 1]];
             for (int j = 0, jn = layerBiasWeights.length; j < jn; j++) {
-                layerBiasWeights[j] = Math.random();
+                layerBiasWeights[j] =0;// Math.random() / jn;
             }
             biasWeights.add(layerBiasWeights);
         }
